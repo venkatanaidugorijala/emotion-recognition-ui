@@ -1,0 +1,49 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Emotion Recognition</title>
+</head>
+<body>
+  <h2>🎥 Real-Time Face & Emotion Recognition</h2>
+  <video id="video" width="640" height="480" autoplay muted></video>
+  <canvas id="canvas" width="640" height="480" style="display:none"></canvas>
+  <div id="output"></div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const output = document.getElementById('output');
+
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+    }
+
+    async function sendFrame() {
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+
+      const formData = new FormData();
+      formData.append('frame', imageBlob);
+
+      const response = await fetch('/predict', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      output.innerHTML = `<h3>Detected Emotion: ${result.emotion}</h3>
+                          <p>Name: ${result.name || 'Unknown'}</p>
+                          <p>Confidence: ${(result.confidence * 100).toFixed(2)}%</p>`;
+    }
+
+    setupCamera().then(() => {
+      setInterval(sendFrame, 2000); // Send a frame every 2 seconds
+    });
+  </script>
+</body>
+</html>
