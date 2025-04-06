@@ -6,4 +6,4 @@ scikit-learn
 matplotlib
 seaborn
 Pillow
-numpy
+numpy==1.23.5
