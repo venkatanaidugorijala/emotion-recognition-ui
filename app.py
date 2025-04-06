@@ -1,12 +1,11 @@
-from flask import Flask, request, jsonify, render_template
+import streamlit as st
 import cv2
 import numpy as np
 from keras.models import load_model
 from keras.preprocessing.image import img_to_array
 from sklearn.preprocessing import LabelEncoder
 import os
-
-app = Flask(__name__)
+from PIL import Image
 
 # Load models and resources
 face_classifier = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -17,18 +16,16 @@ emotion_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surpri
 label_encoder = LabelEncoder()
 label_encoder.fit(np.unique(os.listdir('recognition dataset')))
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+# Streamlit UI
+st.set_page_config(page_title="Emotion Recognition", layout="centered")
+st.title("🎭 Real-Time Face & Emotion Recognition")
+st.write("Capture a photo using your webcam and get emotion & identity predictions!")
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    if 'frame' not in request.files:
-        return jsonify({"error": "No frame provided"}), 400
+img_file_buffer = st.camera_input("Take a picture")
 
-    file = request.files['frame']
-    file_bytes = np.frombuffer(file.read(), np.uint8)
-    frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+if img_file_buffer is not None:
+    image = Image.open(img_file_buffer)
+    frame = np.array(image)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_classifier.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
@@ -66,7 +63,9 @@ def predict():
             result["name"] = recognition_label[0]
             break
 
-    return jsonify(result)
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    st.subheader("📊 Prediction Result:")
+    if result["face_detected"]:
+        st.success(f"**Name:** {result['name']}")
+        st.info(f"**Emotion:** {result['emotion']} ({int(result['confidence'] * 100)}%)")
+    else:
+        st.warning("No face detected in the image. Try again!")
